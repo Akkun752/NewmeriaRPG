@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "package": "fr.akkun.newmeriarpg.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "EnchantmentMenuMixin",
+    "MobMixin",
+    "VillagerHostilesSensorMixin"
+  ],
+  "client": [
+    "client.EnchantmentScreenMixin",
+    "client.WolfRendererMixin",
+    "client.AbstractZombieRendererMixin",
+    "client.HorseRendererMixin",
+    "client.IronGolemRendererMixin",
+    "client.NautilusRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

@@ -1,0 +1,9 @@
+§lDe nouvelles capacités§r
+
+Vous avez désormais une nouvelle barre d'expérience : la §1barre RPG§r. Vous gagnez des points RPG en réalisant différentes actions, comme tuer des monstres ou pêcher.
+
+Lorsque vous montez d'un §1niveau RPG§r, vous pourrez augmenter une statistique d'un niveau dans le menu RPG, accessible avec la §1touche K§r.
+
+Les statistiques §1Force§r, §1Résistance§r, §1Vitesse§r et §1Magie§r vous offrent toutes de nouvelles capacités pour vous renforcer et devenir plus puissant.
+
+Vous pouvez accéder à votre §1roue des sorts§r avec la §1touche M§r.
