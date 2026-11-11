@@ -6,4 +6,6 @@ Lorsque vous montez d'un §1niveau RPG§r, vous pourrez augmenter une statistiqu
 
 Les statistiques §1Force§r, §1Résistance§r, §1Vitesse§r et §1Magie§r vous offrent toutes de nouvelles capacités pour vous renforcer et devenir plus puissant.
 
-Vous pouvez accéder à votre §1roue des sorts§r avec la §1touche M§r.
+Chaque niveau de §1Magie§r vous donne un §1emplacement de sort§r. Choisissez les sorts qui les remplissent dans le §1Grimoire de sorts§r (un livre et un lapis-lazuli) : vous pouvez apprendre et oublier vos sorts à tout moment.
+
+Vous pouvez accéder à votre §1roue des sorts§r avec la §1touche M§r, puis lancer le sort choisi avec une §1baguette§r.

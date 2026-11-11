@@ -1,5 +1,7 @@
 package fr.akkun.newmeriarpg.network;
 
+import fr.akkun.newmeriacore.item.ModItems;
+import fr.akkun.newmeriarpg.SpellBook;
 import fr.akkun.newmeriarpg.client.ClientCompanionHandler;
 import fr.akkun.newmeriarpg.RpgAttachments;
 import fr.akkun.newmeriarpg.RpgAttributeModifiers;
@@ -25,6 +27,7 @@ public class RpgNetworking {
         PayloadRegistrar registrar = event.registrar("1");
         registrar.playToServer(SpendStatPointPayload.TYPE, SpendStatPointPayload.STREAM_CODEC, RpgNetworking::handleSpendStatPoint);
         registrar.playToServer(SelectSpellPayload.TYPE, SelectSpellPayload.STREAM_CODEC, RpgNetworking::handleSelectSpell);
+        registrar.playToServer(LearnSpellPayload.TYPE, LearnSpellPayload.STREAM_CODEC, RpgNetworking::handleLearnSpell);
         registrar.playToServer(SummonCompanionPayload.TYPE, SummonCompanionPayload.STREAM_CODEC, RpgNetworking::handleSummonCompanion);
         registrar.playToClient(OpenCompanionMenuPayload.TYPE, OpenCompanionMenuPayload.STREAM_CODEC, RpgNetworking::handleOpenCompanionMenu);
     }
@@ -35,7 +38,7 @@ public class RpgNetworking {
         }
         RpgStat stat = payload.stat();
         RpgData data = player.getData(RpgAttachments.RPG_DATA);
-        if (data.unspentStatPoints() <= 0 || stat.level(data) >= RpgData.MAX_STAT_LEVEL) {
+        if (data.unspentStatPoints() <= 0 || stat.level(data) >= RpgData.MAX_STAT_LEVEL || payload.level() != stat.level(data) + 1) {
             return;
         }
         RpgData updated = stat.withLevel(data, stat.level(data) + 1)
@@ -48,17 +51,32 @@ public class RpgNetworking {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
         }
-        int spellOrdinal = payload.spell();
         RpgData data = player.getData(RpgAttachments.RPG_DATA);
-        if (spellOrdinal != RpgData.NO_SPELL) {
-            if (spellOrdinal < 0 || spellOrdinal >= RpgSpell.values().length) {
-                return;
-            }
-            if (!RpgSpell.values()[spellOrdinal].isUnlocked(data.magicLevel())) {
-                return;
-            }
+        if (!data.spells().hasLearned(payload.spell())) {
+            return;
         }
-        player.setData(RpgAttachments.RPG_DATA, data.withSelectedSpell(spellOrdinal));
+        player.setData(RpgAttachments.RPG_DATA, data.withSpells(data.spells().select(payload.spell())));
+    }
+
+    private static void handleLearnSpell(LearnSpellPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+        // Spells are only learned and forgotten with the Spellbook open, so in hand.
+        if (!player.getMainHandItem().is(ModItems.SPELLBOOK.get()) && !player.getOffhandItem().is(ModItems.SPELLBOOK.get())) {
+            return;
+        }
+        RpgSpell spell = payload.spell();
+        RpgData data = player.getData(RpgAttachments.RPG_DATA);
+        SpellBook spells = data.spells();
+        if (payload.learn()) {
+            if (spells.hasLearned(spell) || !spells.hasFreeSlot(data.magicLevel()) || !spell.isAvailableTo(player)) {
+                return;
+            }
+            player.setData(RpgAttachments.RPG_DATA, data.withSpells(spells.learn(spell)));
+        } else if (spells.hasLearned(spell)) {
+            player.setData(RpgAttachments.RPG_DATA, data.withSpells(spells.forget(spell)));
+        }
     }
 
     private static void handleSummonCompanion(SummonCompanionPayload payload, IPayloadContext context) {

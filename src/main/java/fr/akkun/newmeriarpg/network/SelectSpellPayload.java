@@ -1,7 +1,6 @@
 package fr.akkun.newmeriarpg.network;
 
 import fr.akkun.newmeriarpg.NewmeriaRPG;
-import fr.akkun.newmeriarpg.RpgData;
 import fr.akkun.newmeriarpg.RpgSpell;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -9,13 +8,14 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
-/** {@code spell} is the ordinal of the {@link RpgSpell} to select, or {@link RpgData#NO_SPELL} to deselect. */
-public record SelectSpellPayload(int spell) implements CustomPacketPayload {
+/** Client -> server: the spell picked on the spell wheel, which wands then cast. Must be a learned spell. */
+public record SelectSpellPayload(RpgSpell spell) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<SelectSpellPayload> TYPE =
             new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(NewmeriaRPG.MOD_ID, "select_spell"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SelectSpellPayload> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_INT, SelectSpellPayload::spell,
+            ByteBufCodecs.VAR_INT.map(ordinal -> RpgSpell.values()[ordinal], RpgSpell::ordinal),
+            SelectSpellPayload::spell,
             SelectSpellPayload::new
     );
 

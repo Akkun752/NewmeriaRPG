@@ -1,47 +1,64 @@
 package fr.akkun.newmeriarpg;
 
-import fr.akkun.newmeriarpg.NewmeriaRPG;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
 
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
 
-/** Order matters: this is both the unlock order shown in the Magic menu (by required Magic level)
- *  and the slice order in the spell wheel (see {@code MagicWheelScreen}) - adding a spell here (with
- *  a matching 16x16 icon, see {@link #icon()}) automatically adds it as a wheel slice, no other
- *  wiring needed. Cooldown is not per-spell anymore - see {@link SpellCasting} for the general
- *  Magic-level cooldown. */
+/**
+ * Every spell of the game. None of them is tied to a Magic level any more: each Magic level gives a
+ * spell slot (see {@link SpellBook}), and players pick which spells fill them in the Spellbook. The order
+ * here is the order of the Spellbook's list.
+ *
+ * <p>Adding a spell: an entry here (with its 16x16 icon, see {@link #icon()}, and its name in the language
+ * files), plus what it does in {@link SpellCasting#cast}.
+ *
+ * <p>A spell can be restricted to some players: give their exact login usernames (not display names) as
+ * last argument. Everyone else neither sees it in the Spellbook nor can learn or cast it. No usernames =
+ * open to everyone.
+ */
 public enum RpgSpell {
-    FRIENDSHIP(1, "rpg.newmeriarpg.spell.friendship"),
-    LIGHTNING(2, "rpg.newmeriarpg.spell.lightning"),
-    FIREBALL(3, "rpg.newmeriarpg.spell.fireball"),
-    INK_FRIEND(4, "rpg.newmeriarpg.spell.ink_friend"),
-    TELEPORT(5, "rpg.newmeriarpg.spell.teleport");
+    FRIENDSHIP("rpg.newmeriarpg.spell.friendship"),
+    LIGHTNING("rpg.newmeriarpg.spell.lightning"),
+    FIREBALL("rpg.newmeriarpg.spell.fireball"),
+    // "Dev" is the local singleplayer username, for testing.
+    INK_FRIEND("rpg.newmeriarpg.spell.ink_friend", "RaphaAile", "Dev"),
+    TELEPORT("rpg.newmeriarpg.spell.teleport"),
+    HEALING("rpg.newmeriarpg.spell.healing");
 
-    private final int requiredMagicLevel;
     private final String translationKey;
+    private final Set<String> allowedPlayers;
     private final Identifier icon;
 
-    RpgSpell(int requiredMagicLevel, String translationKey) {
-        this.requiredMagicLevel = requiredMagicLevel;
+    RpgSpell(String translationKey, String... allowedPlayers) {
         this.translationKey = translationKey;
-        this.icon = Identifier.fromNamespaceAndPath(NewmeriaRPG.MOD_ID,
-                "textures/gui/spell/" + name().toLowerCase(Locale.ROOT) + ".png");
+        this.allowedPlayers = Set.of(allowedPlayers);
+        this.icon = Identifier.fromNamespaceAndPath(NewmeriaRPG.MOD_ID, "textures/gui/spell/" + this.id() + ".png");
     }
 
-    public int requiredMagicLevel() {
-        return requiredMagicLevel;
+    /** What saves and the network know the spell by: never change it once players have learned the spell. */
+    public String id() {
+        return name().toLowerCase(Locale.ROOT);
     }
 
-    public boolean isUnlocked(int magicLevel) {
-        return magicLevel >= requiredMagicLevel;
+    public static Optional<RpgSpell> byId(String id) {
+        return Arrays.stream(values()).filter(spell -> spell.id().equals(id)).findFirst();
+    }
+
+    /** @return whether that player may see, learn and cast this spell */
+    public boolean isAvailableTo(Player player) {
+        return allowedPlayers.isEmpty() || allowedPlayers.contains(player.getGameProfile().name());
     }
 
     public Component displayName() {
         return Component.translatable(translationKey);
     }
 
-    /** 16x16 icon, expected at {@code assets/newmeriarpg/textures/gui/spell/<name>.png}. */
+    /** 16x16 icon, expected at {@code assets/newmeriarpg/textures/gui/spell/<id>.png}. */
     public Identifier icon() {
         return icon;
     }

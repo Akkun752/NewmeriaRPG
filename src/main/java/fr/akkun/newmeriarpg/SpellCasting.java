@@ -1,6 +1,6 @@
 package fr.akkun.newmeriarpg;
 
-import fr.akkun.newmeriacore.entity.PoweredAttacks;
+import fr.akkun.newmeriarpg.PoweredAttacks;
 import fr.akkun.newmeriacore.item.WandCastEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -16,7 +16,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import fr.akkun.newmeriarpg.companion.network.OpenCompanionMenuPayload;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySelector;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -50,15 +53,19 @@ public class SpellCasting {
     // spots are tried (most failures are oceans) before giving up. Each try can generate a chunk.
     private static final double TELEPORT_RADIUS = 10_000.0;
     private static final int TELEPORT_ATTEMPTS = 10;
+    // Healing spell: its Regeneration lasts 10 seconds, at level II (amplifier 1).
+    private static final int HEALING_DURATION_TICKS = 10 * 20;
+    private static final int HEALING_AMPLIFIER = 1;
 
     /** @return whether a spell was actually cast (false if none selected, locked, or still on cooldown). */
     public static boolean cast(ServerPlayer player) {
         RpgData data = player.getData(RpgAttachments.RPG_DATA);
-        if (data.selectedSpell() == RpgData.NO_SPELL) {
+        if (data.spells().selected().isEmpty()) {
             return false;
         }
-        RpgSpell spell = RpgSpell.values()[data.selectedSpell()];
-        if (!spell.isUnlocked(data.magicLevel())) {
+        RpgSpell spell = data.spells().selected().get();
+        // Also covers a spell restricted to other players after this one learned it.
+        if (!spell.isAvailableTo(player)) {
             return false;
         }
 
@@ -86,6 +93,7 @@ public class SpellCasting {
             case FRIENDSHIP -> castFriendship(player);
             case FIREBALL -> castFireball(player);
             case INK_FRIEND -> castInkFriend(player);
+            case HEALING -> castHealing(player);
         }
         return true;
     }
@@ -185,6 +193,21 @@ public class SpellCasting {
             horse.setOwner(player);
             celebrateTaming(player.level(), target);
         }
+    }
+
+    /**
+     * Healing: Regeneration II for {@link #HEALING_DURATION_TICKS} on the player or creature the caster is
+     * looking at, within reach (as far as they can hit) - or on the caster, when there is none.
+     */
+    private static void castHealing(ServerPlayer player) {
+        HitResult hit = ProjectileUtil.getHitResultOnViewVector(player, EntitySelector.CAN_BE_PICKED, player.entityInteractionRange());
+        LivingEntity target = hit instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof LivingEntity looked
+                ? looked
+                : player;
+        target.addEffect(new MobEffectInstance(MobEffects.REGENERATION, HEALING_DURATION_TICKS, HEALING_AMPLIFIER), player);
+        ServerLevel level = player.level();
+        level.sendParticles(ParticleTypes.HEART, target.getX(), target.getY() + target.getBbHeight() * 0.75, target.getZ(), 6, 0.3, 0.3, 0.3, 0.0);
+        level.playSound(null, target.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 1.0F, 1.2F);
     }
 
     private static void celebrateTaming(ServerLevel level, Entity tamed) {

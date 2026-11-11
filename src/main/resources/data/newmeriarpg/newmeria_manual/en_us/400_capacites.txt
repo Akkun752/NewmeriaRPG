@@ -6,4 +6,6 @@ When you gain an §1RPG level§r, you can raise one stat by one level in the RPG
 
 The §1Strength§r, §1Resistance§r, §1Speed§r and §1Magic§r stats each give you new abilities to make you stronger and more powerful.
 
-You can open your §1spell wheel§r with the §1M key§r.
+Each §1Magic§r level gives you a §1spell slot§r. Pick the spells that fill them in the §1Spellbook§r (a book and a lapis lazuli): you can learn and forget your spells at any time.
+
+You can open your §1spell wheel§r with the §1M key§r, then cast the chosen spell with a §1wand§r.

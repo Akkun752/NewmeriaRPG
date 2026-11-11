@@ -9,15 +9,14 @@ import net.minecraft.network.codec.StreamCodec;
 
 public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
                        int forceLevel, int resistanceLevel, int speedLevel, int magicLevel,
-                       int selectedSpell) {
+                       SpellBook spells) {
     public static final int MIN_RPG_LEVEL = 0;
     public static final int MAX_RPG_LEVEL = 20;
     public static final int MIN_STAT_LEVEL = 0;
     public static final int MAX_STAT_LEVEL = 5;
-    public static final int NO_SPELL = -1;
 
     public static final RpgData DEFAULT = new RpgData(MIN_RPG_LEVEL, 0, 0,
-            MIN_STAT_LEVEL, MIN_STAT_LEVEL, MIN_STAT_LEVEL, MIN_STAT_LEVEL, NO_SPELL);
+            MIN_STAT_LEVEL, MIN_STAT_LEVEL, MIN_STAT_LEVEL, MIN_STAT_LEVEL, SpellBook.EMPTY);
 
     public static final MapCodec<RpgData> MAP_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codec.INT.fieldOf("level").forGetter(RpgData::level),
@@ -27,7 +26,7 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
             Codec.INT.fieldOf("resistance_level").forGetter(RpgData::resistanceLevel),
             Codec.INT.fieldOf("speed_level").forGetter(RpgData::speedLevel),
             Codec.INT.fieldOf("magic_level").forGetter(RpgData::magicLevel),
-            Codec.INT.fieldOf("selected_spell").forGetter(RpgData::selectedSpell)
+            SpellBook.fieldOf("spells").forGetter(RpgData::spells)
     ).apply(instance, RpgData::new));
 
     public static final StreamCodec<ByteBuf, RpgData> STREAM_CODEC = StreamCodec.composite(
@@ -38,7 +37,7 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
             ByteBufCodecs.VAR_INT, RpgData::resistanceLevel,
             ByteBufCodecs.VAR_INT, RpgData::speedLevel,
             ByteBufCodecs.VAR_INT, RpgData::magicLevel,
-            ByteBufCodecs.VAR_INT, RpgData::selectedSpell,
+            SpellBook.STREAM_CODEC, RpgData::spells,
             RpgData::new
     );
 
@@ -50,32 +49,28 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
     }
 
     public RpgData withForceLevel(int newLevel) {
-        return new RpgData(level, pointsIntoLevel, unspentStatPoints, newLevel, resistanceLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(level, pointsIntoLevel, unspentStatPoints, newLevel, resistanceLevel, speedLevel, magicLevel, spells);
     }
 
     public RpgData withResistanceLevel(int newLevel) {
-        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, newLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, newLevel, speedLevel, magicLevel, spells);
     }
 
     public RpgData withSpeedLevel(int newLevel) {
-        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, resistanceLevel, newLevel, magicLevel, selectedSpell);
+        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, resistanceLevel, newLevel, magicLevel, spells);
     }
 
     public RpgData withMagicLevel(int newLevel) {
-        RpgData updated = new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, resistanceLevel, speedLevel, newLevel, selectedSpell);
-        // Drop the current spell if it's no longer unlocked at the new Magic level.
-        if (selectedSpell != NO_SPELL && !RpgSpell.values()[selectedSpell].isUnlocked(newLevel)) {
-            return updated.withSelectedSpell(NO_SPELL);
-        }
-        return updated;
+        // Each Magic level is a spell slot: losing levels forgets the spells learned last that no longer fit.
+        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, resistanceLevel, speedLevel, newLevel, spells.fitTo(newLevel));
     }
 
     public RpgData withUnspentStatPoints(int newUnspent) {
-        return new RpgData(level, pointsIntoLevel, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(level, pointsIntoLevel, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, spells);
     }
 
-    public RpgData withSelectedSpell(int newSelectedSpell) {
-        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, resistanceLevel, speedLevel, magicLevel, newSelectedSpell);
+    public RpgData withSpells(SpellBook newSpells) {
+        return new RpgData(level, pointsIntoLevel, unspentStatPoints, forceLevel, resistanceLevel, speedLevel, magicLevel, newSpells);
     }
 
     /**
@@ -101,7 +96,7 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
         if (newLevel >= MAX_RPG_LEVEL) {
             newPoints = 0;
         }
-        return new RpgData(newLevel, newPoints, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(newLevel, newPoints, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, spells);
     }
 
     /**
@@ -115,7 +110,7 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
         int newLevel = Math.min(MAX_RPG_LEVEL, level + amount);
         int gained = newLevel - level;
         int newPoints = newLevel >= MAX_RPG_LEVEL ? 0 : pointsIntoLevel;
-        return new RpgData(newLevel, newPoints, unspentStatPoints + gained, forceLevel, resistanceLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(newLevel, newPoints, unspentStatPoints + gained, forceLevel, resistanceLevel, speedLevel, magicLevel, spells);
     }
 
     /**
@@ -139,7 +134,7 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
         if (newPoints < 0) {
             newPoints = 0;
         }
-        return new RpgData(newLevel, newPoints, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(newLevel, newPoints, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, spells);
     }
 
     /**
@@ -154,6 +149,6 @@ public record RpgData(int level, int pointsIntoLevel, int unspentStatPoints,
         int newLevel = Math.max(MIN_RPG_LEVEL, level - amount);
         int actuallyLost = level - newLevel;
         int newUnspent = Math.max(0, unspentStatPoints - actuallyLost);
-        return new RpgData(newLevel, 0, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, selectedSpell);
+        return new RpgData(newLevel, 0, newUnspent, forceLevel, resistanceLevel, speedLevel, magicLevel, spells);
     }
 }
